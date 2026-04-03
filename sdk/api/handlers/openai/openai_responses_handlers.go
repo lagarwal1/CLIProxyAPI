@@ -255,6 +255,8 @@ func (h *OpenAIResponsesAPIHandler) Responses(c *gin.Context) {
 		return
 	}
 
+	rawJSON = sanitizeOpenAIResponsesRequest(rawJSON)
+
 	// Check if the client requested a streaming response.
 	streamResult := gjson.GetBytes(rawJSON, "stream")
 	if streamResult.Type == gjson.True {
@@ -263,6 +265,14 @@ func (h *OpenAIResponsesAPIHandler) Responses(c *gin.Context) {
 		h.handleNonStreamingResponse(c, rawJSON)
 	}
 
+}
+
+func sanitizeOpenAIResponsesRequest(rawJSON []byte) []byte {
+	// Some OpenAI-compatible clients send prompt cache metadata that the
+	// upstream OpenAI Responses API rejects for current GPT-5 models.
+	// Strip only the known-incompatible field and preserve the rest.
+	rawJSON, _ = sjson.DeleteBytes(rawJSON, "prompt_cache_retention")
+	return rawJSON
 }
 
 func (h *OpenAIResponsesAPIHandler) Compact(c *gin.Context) {
